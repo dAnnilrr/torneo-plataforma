@@ -16,7 +16,8 @@
     "incremental": true,
     "baseUrl": "src",
     "paths": {
-      "@lib/*": ["lib/*"]
+      "@/*": ["*"],        // Permite importar cualquier cosa desde src usando @/
+      "@lib/*": ["lib/*"]  // Alias específico para la carpeta lib
     },
     "plugins": [
       { "name": "next" }

@@ -1,6 +1,7 @@
-// lib/cloudinary.ts (solo servidor)
+// src/lib/cloudinary.ts
 import { v2 as cloudinary } from "cloudinary";
 
+// Configuración de Cloudinary usando strings
 cloudinary.config({
   cloud_name: "ds9ive0oy",
   api_key: "783236721288797",
