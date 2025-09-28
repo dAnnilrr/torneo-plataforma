@@ -1,29 +1,35 @@
-import cloudinary from "../../lib/cloudinary";
+// app/api/galeria/route.ts
+import { NextResponse } from "next/server";
+import cloudinary from "../../../lib/cloudinary";
 
-
-interface Props {
-  searchParams?: { deporte?: string };
-}
-
-export async function GET(req: Request, { searchParams }: Props) {
+export async function GET(req: Request) {
   try {
-    const deporte = searchParams?.deporte || ""; // nombre de la carpeta
-    const result = await cloudinary.api.resources({
-      type: "upload",
-      prefix: `galeria_deportes/${deporte}`, // subcarpeta del deporte
-      max_results: 100,
-    });
+    const url = new URL(req.url);
+    const carpeta = url.searchParams.get("carpeta");
 
-    const urls = result.resources.map((res) => res.secure_url);
+    if (!carpeta) {
+      return NextResponse.json({ error: "Falta carpeta" }, { status: 400 });
+    }
 
-    return new Response(JSON.stringify(urls), {
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: "No se pudieron obtener las imágenes" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    const res = await cloudinary.search
+      .expression(`folder:${carpeta}`)
+      .sort_by("public_id", "asc")
+      .max_results(30)
+      .execute();
+
+    const urls = Array.isArray(res.resources)
+      ? res.resources.map((r: { secure_url: string }) => r.secure_url)
+      : [];
+
+    return NextResponse.json({ urls });
+  } catch (error: unknown) {
+    console.error("Error al obtener galería:", error);
+    return NextResponse.json(
+      {
+        error: "Error al obtener galería",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }
