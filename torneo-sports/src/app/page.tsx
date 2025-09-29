@@ -87,18 +87,25 @@ export default function Home() {
     partidos_perdidos: 0
   });
 
-  // Firestore real-time
+  // --- Firestore real-time ---
   useEffect(() => {
     const unsubscribeEquipos = onSnapshot(collection(db, "equipos"), snapshot => {
-      setEquipos(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Equipo)));
+      const equiposData: Equipo[] = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Equipo, "id">) }));
+      setEquipos(equiposData);
     });
+
     const unsubscribePartidos = onSnapshot(collection(db, "partidos"), snapshot => {
-      setPartidos(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Partido)));
+      const partidosData: Partido[] = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Partido, "id">) }));
+      setPartidos(partidosData);
     });
-    return () => { unsubscribeEquipos(); unsubscribePartidos(); }
+
+    return () => {
+      unsubscribeEquipos();
+      unsubscribePartidos();
+    }
   }, []);
 
-  // Auth
+  // --- Auth ---
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -117,14 +124,14 @@ export default function Home() {
     setPassword("");
   };
 
-  // Registrar Equipo
+  // --- Registrar Equipo ---
   const handleAddEquipo = async () => {
     if (!newEquipo.nombre) return alert("Ingrese nombre del equipo");
     await addDoc(collection(db, "equipos"), newEquipo);
     setNewEquipo({ ...newEquipo, nombre: "" });
   };
 
-  // Crear Partido
+  // --- Crear Partido ---
   const handleCrearPartido = async () => {
     if (!partidoSel.equipoA || !partidoSel.equipoB || !partidoSel.deporte || !partidoSel.categoria || !partidoSel.genero) {
       return alert("Seleccione todos los campos para crear un partido");
@@ -141,31 +148,31 @@ export default function Home() {
     setPartidoSel({});
   };
 
-  // Anotar puntos
+  // --- Anotar puntos ---
   const handleAnotar = async (partidoId: string, equipo: "A" | "B") => {
-    const ref = doc(db, "partidos", partidoId);
     const partido = partidos.find(p => p.id === partidoId);
     if (!partido) return;
+    const ref = doc(db, "partidos", partidoId);
     const update: Partial<Partido> = {};
-    if (equipo === "A") update.puntosA = partido.puntosA + 1;
-    else update.puntosB = partido.puntosB + 1;
+    if (equipo === "A") update.puntosA = (partido.puntosA ?? 0) + 1;
+    else update.puntosB = (partido.puntosB ?? 0) + 1;
     await setDoc(ref, { ...partido, ...update });
   };
 
-  // Reiniciar plataforma
+  // --- Reiniciar plataforma ---
   const handleResetPlatform = async () => {
     if (!confirm("¿Deseas borrar todos los datos y reiniciar la plataforma?")) return;
     const eqSnap = await getDocs(collection(db, "equipos"));
     const ptSnap = await getDocs(collection(db, "partidos"));
-    eqSnap.forEach(d => deleteDoc(doc(db, "equipos", d.id)));
-    ptSnap.forEach(d => deleteDoc(doc(db, "partidos", d.id)));
+    for (const d of eqSnap.docs) await deleteDoc(doc(db, "equipos", d.id));
+    for (const d of ptSnap.docs) await deleteDoc(doc(db, "partidos", d.id));
     alert("Plataforma reiniciada");
   };
 
-  // Loading
+  // --- Loading ---
   if (loading) return <p className="text-center mt-10">Cargando...</p>;
 
-  // Login
+  // --- Login ---
   if (!user && !role) return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-blue-50 text-gray-800">
       <motion.h1
@@ -185,10 +192,10 @@ export default function Home() {
     </div>
   );
 
-  // Main
+  // --- Main ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white font-sans text-gray-800 p-4">
-      {/* Header */}
+      {/* --- Header --- */}
       <header className="flex justify-between items-center p-4 bg-blue-200 shadow mb-4 rounded">
         <div className="flex gap-4 items-center">
           <div className="w-20 h-20 relative"><Image src="/logo_tec.png" alt="Logo Tec" fill className="object-contain" /></div>
@@ -267,32 +274,30 @@ export default function Home() {
       {role === "visitante" && (
         <div className="max-w-5xl mx-auto space-y-6">
           <h2 className="font-bold text-2xl mb-4">Indicadores y Videos</h2>
-          {deportes.map(dep => {
-            return (
-              <div key={dep} className="mb-6">
-                <h3 className="font-semibold text-blue-700">{dep}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  {categorias.map(cat => generos.map(gen => {
-                    const key = `${cat}_${gen}`;
-                    const videoUrl = videosData[dep][key];
-                    return (
-                      <div key={key} className="bg-white p-2 rounded shadow">
-                        <p className="font-semibold">{cat} {gen}</p>
-                        <iframe width="100%" height="180" src={videoUrl.replace("watch?v=", "embed/")} title={`${dep} ${cat} ${gen}`} allowFullScreen></iframe>
-                        <p className="mt-2 font-bold">Marcadores en tiempo real:</p>
-                        {partidos.filter(p => p.deporte === dep && p.categoria === cat && p.genero === gen).map(p => (
-                          <div key={p.id} className="flex justify-between bg-blue-50 p-1 rounded my-1">
-                            <span>{p.equipoA} ({p.puntosA})</span>
-                            <span>{p.equipoB} ({p.puntosB})</span>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  }))}
-                </div>
+          {deportes.map(dep => (
+            <div key={dep} className="mb-6">
+              <h3 className="font-semibold text-blue-700">{dep}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                {categorias.flatMap(cat => generos.map(gen => {
+                  const key = `${cat}_${gen}`;
+                  const videoUrl = videosData[dep][key];
+                  return (
+                    <div key={key} className="bg-white p-2 rounded shadow">
+                      <p className="font-semibold">{cat} {gen}</p>
+                      <iframe width="100%" height="180" src={videoUrl.replace("watch?v=", "embed/")} title={`${dep} ${cat} ${gen}`} allowFullScreen></iframe>
+                      <p className="mt-2 font-bold">Marcadores en tiempo real:</p>
+                      {partidos.filter(p => p.deporte === dep && p.categoria === cat && p.genero === gen).map(p => (
+                        <div key={p.id} className="flex justify-between bg-blue-50 p-1 rounded my-1">
+                          <span>{p.equipoA} ({p.puntosA})</span>
+                          <span>{p.equipoB} ({p.puntosB})</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }))}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
