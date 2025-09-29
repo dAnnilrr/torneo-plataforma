@@ -25,7 +25,7 @@ import {
 /** Tipos */
 type Categoria = "prepa" | "profesional";
 type Genero = "varonil" | "femenil";
-type Deporte = "Voleibol" | "Fútbol" | "Basketball";
+type Deporte = "Voleibol" | "Fútbol" | "Basketball" | "Tochito";
 
 type Equipo = {
   id?: string;
@@ -56,7 +56,7 @@ type VideoDeporte = {
 };
 
 /** Datos constantes */
-const deportes: Deporte[] = ["Voleibol", "Fútbol", "Basketball"];
+const deportes: Deporte[] = ["Voleibol", "Fútbol", "Basketball", "Tochito"];
 const categorias: Categoria[] = ["prepa", "profesional"];
 const generos: Genero[] = ["varonil", "femenil"];
 
@@ -78,6 +78,12 @@ const videosData: { [key in Deporte]: VideoDeporte } = {
     prepa_femenil: "https://www.youtube.com/embed/video10",
     profesional_varonil: "https://www.youtube.com/embed/video11",
     profesional_femenil: "https://www.youtube.com/embed/video12"
+  },
+  "Tochito": {
+    prepa_varonil: "https://www.youtube.com/embed/video13",
+    prepa_femenil: "https://www.youtube.com/embed/video14",
+    profesional_varonil: "https://www.youtube.com/embed/video15",
+    profesional_femenil: "https://www.youtube.com/embed/video16"
   }
 };
 
@@ -320,7 +326,7 @@ export default function Home() {
       <header className="flex flex-col md:flex-row justify-between items-center p-4 bg-blue-200 shadow mb-4 rounded">
         <div className="flex gap-4 items-center">
           <div className="w-24 h-16 relative">
-            <Image src="/logo_tec.png" alt="Logo Tec" fill className="object-contain" />
+            <Image src="/copablanco.jpg" alt="Logo Tec" fill className="object-contain" />
           </div>
           <div>
             <h1 className="font-bold text-xl">Plataforma de Marcadores</h1>
@@ -429,9 +435,11 @@ export default function Home() {
                 const key = `${p.categoria.toLowerCase().trim()}_${p.genero.toLowerCase().trim()}`;
                 const videoUrl: string = videosData[p.deporte]?.[key] || "";
 
-                const colorBg = p.deporte === "Voleibol" ? "bg-yellow-100" :
-                                p.deporte === "Fútbol" ? "bg-green-100" :
-                                "bg-blue-100";
+                const colorBg =
+                  p.deporte === "Voleibol" ? "bg-yellow-100" :
+                  p.deporte === "Fútbol" ? "bg-green-100" :
+                  p.deporte === "Basketball" ? "bg-blue-100" :
+                  "bg-purple-100";
 
                 return (
                   <div key={p.id ?? Math.random()} className={`${colorBg} p-4 rounded shadow-lg border-l-4 border-blue-500`}>
