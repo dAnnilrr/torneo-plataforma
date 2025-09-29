@@ -75,7 +75,7 @@ export default function Home() {
 
   const [equipos,setEquipos] = useState<Equipo[]>([]);
   const [partidos,setPartidos] = useState<Partido[]>([]);
-  const [partidoSel,setPartidoSel] = useState<Partido|null>(null);
+  const [partidoSel,setPartidoSel] = useState<Partial<Partido>>({});
 
   const [newEquipo, setNewEquipo] = useState<Equipo>({
     nombre:"", categoria:"prepa", genero:"varonil", deporte:"Voleibol",
@@ -90,7 +90,7 @@ export default function Home() {
     const unsubscribePartidos = onSnapshot(collection(db,"partidos"), snapshot=>{
       setPartidos(snapshot.docs.map(d=>({id:d.id,...d.data()} as Partido)));
     });
-    return ()=>{unsubscribeEquipos(); unsubscribePartidos();}
+    return ()=>{ unsubscribeEquipos(); unsubscribePartidos(); }
   },[]);
 
   // Auth
@@ -99,42 +99,54 @@ export default function Home() {
       await signInWithEmailAndPassword(auth,email,password);
       setRole("juez");
       setLoginError("");
-    }catch(err:any){ setLoginError(err.message); }
-  };
-  const handleLogout = async()=>{
-    await signOut(auth);
-    setRole(null); setEmail(""); setPassword("");
+    }catch(err:any){
+      setLoginError(err.message);
+    }
   };
 
+  const handleLogout = async()=>{
+    await signOut(auth);
+    setRole(null); 
+    setEmail(""); 
+    setPassword("");
+  };
+
+  // Registrar Equipo
   const handleAddEquipo = async()=>{
     if(!newEquipo.nombre) return alert("Ingrese nombre del equipo");
     await addDoc(collection(db,"equipos"),newEquipo);
     setNewEquipo({...newEquipo,nombre:""});
   };
 
+  // Crear Partido
   const handleCrearPartido = async()=>{
-    if(!partidoSel) return;
+    if(!partidoSel.equipoA || !partidoSel.equipoB || !partidoSel.deporte || !partidoSel.categoria || !partidoSel.genero){
+      return alert("Seleccione todos los campos para crear un partido");
+    }
     await addDoc(collection(db,"partidos"),{
       deporte: partidoSel.deporte,
       categoria: partidoSel.categoria,
       genero: partidoSel.genero,
       equipoA: partidoSel.equipoA,
       equipoB: partidoSel.equipoB,
-      puntosA:0, puntosB:0
+      puntosA:0,
+      puntosB:0
     });
-    setPartidoSel(null);
+    setPartidoSel({});
   };
 
+  // Anotar puntos
   const handleAnotar = async(partidoId:string, equipo:"A"|"B")=>{
     const ref = doc(db,"partidos",partidoId);
     const partido = partidos.find(p=>p.id===partidoId);
     if(!partido) return;
-    const update:any = {};
-    if(equipo==="A") update.puntosA = partido.puntosA+1;
-    else update.puntosB = partido.puntosB+1;
+    const update: Partial<Partido> = {};
+    if(equipo==="A") update.puntosA = partido.puntosA + 1;
+    else update.puntosB = partido.puntosB + 1;
     await setDoc(ref,{...partido,...update});
   };
 
+  // Reiniciar plataforma
   const handleResetPlatform = async()=>{
     if(!confirm("¿Deseas borrar todos los datos y reiniciar la plataforma?")) return;
     const eqSnap = await getDocs(collection(db,"equipos"));
@@ -144,10 +156,17 @@ export default function Home() {
     alert("Plataforma reiniciada");
   };
 
+  // Loading
   if(loading) return <p className="text-center mt-10">Cargando...</p>;
+
+  // Login
   if(!user && !role) return(
     <div className="flex flex-col items-center justify-center min-h-screen bg-blue-50 text-gray-800">
-      <motion.h1 initial={{opacity:0, y:-30}} animate={{opacity:1, y:0}} transition={{duration:1.5, repeat:Infinity, repeatType:"reverse"}} className="text-4xl md:text-6xl font-bold text-blue-800 text-center mb-6">
+      <motion.h1
+        initial={{opacity:0, y:-30}}
+        animate={{opacity:1, y:0}}
+        transition={{duration:1.5, repeat:Infinity, repeatType:"reverse"}}
+        className="text-4xl md:text-6xl font-bold text-blue-800 text-center mb-6">
         Bienvenido al Tecnológico de Monterrey
       </motion.h1>
       <h2 className="text-3xl font-bold mb-6">Login Juez</h2>
@@ -160,9 +179,10 @@ export default function Home() {
     </div>
   );
 
+  // Main
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white font-sans text-gray-800 p-4">
-      {/* Header con logos */}
+      {/* Header */}
       <header className="flex justify-between items-center p-4 bg-blue-200 shadow mb-4 rounded">
         <div className="flex gap-4 items-center">
           <div className="w-20 h-20 relative"><Image src="/logo_tec.png" alt="Logo Tec" fill className="object-contain"/></div>
@@ -197,25 +217,25 @@ export default function Home() {
           {/* Crear Partido */}
           <section className="bg-white p-4 rounded shadow">
             <h2 className="font-bold mb-2">Crear Partido</h2>
-            <select value={partidoSel?.deporte||""} onChange={e=>setPartidoSel({...partidoSel!,deporte:e.target.value as Deporte})} className="p-2 border rounded mb-2 w-full">
+            <select value={partidoSel.deporte||""} onChange={e=>setPartidoSel({...partidoSel,deporte:e.target.value as Deporte})} className="p-2 border rounded mb-2 w-full">
               <option value="">Deporte</option>
               {deportes.map(d=><option key={d} value={d}>{d}</option>)}
             </select>
-            <select value={partidoSel?.categoria||""} onChange={e=>setPartidoSel({...partidoSel!,categoria:e.target.value as Categoria})} className="p-2 border rounded mb-2 w-full">
+            <select value={partidoSel.categoria||""} onChange={e=>setPartidoSel({...partidoSel,categoria:e.target.value as Categoria})} className="p-2 border rounded mb-2 w-full">
               <option value="">Categoría</option>
               {categorias.map(c=><option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={partidoSel?.genero||""} onChange={e=>setPartidoSel({...partidoSel!,genero:e.target.value as Genero})} className="p-2 border rounded mb-2 w-full">
+            <select value={partidoSel.genero||""} onChange={e=>setPartidoSel({...partidoSel,genero:e.target.value as Genero})} className="p-2 border rounded mb-2 w-full">
               <option value="">Género</option>
               {generos.map(g=><option key={g} value={g}>{g}</option>)}
             </select>
-            <select value={partidoSel?.equipoA||""} onChange={e=>setPartidoSel({...partidoSel!,equipoA:e.target.value})} className="p-2 border rounded mb-2 w-full">
+            <select value={partidoSel.equipoA||""} onChange={e=>setPartidoSel({...partidoSel,equipoA:e.target.value})} className="p-2 border rounded mb-2 w-full">
               <option value="">Equipo A</option>
-              {equipos.filter(eq=>eq.deporte===partidoSel?.deporte && eq.categoria===partidoSel?.categoria && eq.genero===partidoSel?.genero).map(eq=><option key={eq.nombre} value={eq.nombre}>{eq.nombre}</option>)}
+              {equipos.filter(eq=>eq.deporte===partidoSel.deporte && eq.categoria===partidoSel.categoria && eq.genero===partidoSel.genero).map(eq=><option key={eq.nombre} value={eq.nombre}>{eq.nombre}</option>)}
             </select>
-            <select value={partidoSel?.equipoB||""} onChange={e=>setPartidoSel({...partidoSel!,equipoB:e.target.value})} className="p-2 border rounded mb-2 w-full">
+            <select value={partidoSel.equipoB||""} onChange={e=>setPartidoSel({...partidoSel,equipoB:e.target.value})} className="p-2 border rounded mb-2 w-full">
               <option value="">Equipo B</option>
-              {equipos.filter(eq=>eq.deporte===partidoSel?.deporte && eq.categoria===partidoSel?.categoria && eq.genero===partidoSel?.genero).map(eq=><option key={eq.nombre} value={eq.nombre}>{eq.nombre}</option>)}
+              {equipos.filter(eq=>eq.deporte===partidoSel.deporte && eq.categoria===partidoSel.categoria && eq.genero===partidoSel.genero).map(eq=><option key={eq.nombre} value={eq.nombre}>{eq.nombre}</option>)}
             </select>
             <button onClick={handleCrearPartido} className="bg-green-400 hover:bg-green-300 p-2 rounded w-full">Crear Partido</button>
           </section>
